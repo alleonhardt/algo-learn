@@ -55,20 +55,24 @@ class BuildServer(http.server.BaseHTTPRequestHandler):
                 result = subprocess.run(["git", "fetch", "--all"], cwd=BuildServer.base_path)
                 result = subprocess.run(["git", "worktree", "prune"], cwd=BuildServer.base_path)
                 result = subprocess.run(["git", "worktree", "add", "--detach", f"../{worktree_name}", payload["after"]], cwd=BuildServer.base_path)
-                with open(os.path.join(worktree_name,"stdout.log"),"w") as stdout:
-                    with open(os.path.join(worktree_name,"stderr.log"),"w") as stderr:
+                path = f"/var/www/localhost/htdocs/logs/{ref}/{payload['after']}"
+                os.makedirs(path)
+                with open(os.path.join(path,"stdout.log"),"w") as stdout:
+                    with open(os.path.join(path,"stderr.log"),"w") as stderr:
                         result = subprocess.Popen(["sh", "../build_deploy.sh"], cwd=worktree_name, env={"TARGET": f"/{ref}"},shell=False,stdin=None,stdout=stdout,stderr=stderr)
             else:
                 print(f"Registered push to {payload['ref']}, but the branch was not among the tracked branches",file=sys.stderr)
         elif self.headers.get('X-GitHub-Event') == 'pull_request':
             if payload["action"] == "opened" or payload["action"] == "synchronize":
+                path = f"/var/www/localhost/htdocs/logs/pr/{payload['number']}/{payload['after']}"
+                os.makedirs(path)
                 result = subprocess.run(["git", "fetch", "--all"], cwd=BuildServer.base_path)
                 result = subprocess.run(["git", "worktree", "prune"], cwd=BuildServer.base_path)
                 result = subprocess.run(["git", "worktree", "add", "--detach", f"../{worktree_name}",  payload["pull_request"]["base"]["sha"]], cwd=BuildServer.base_path)
                 urllib.request.urlretrieve(payload["pull_request"]["patch_url"], os.path.join(worktree_name,"patch.patch"))
                 result = subprocess.run(["git", "apply", "--reject","--whitespace=fix", "patch.patch"], cwd=worktree_name)
-                with open(os.path.join(worktree_name,"stdout.log"),"w") as stdout:
-                    with open(os.path.join(worktree_name,"stderr.log"),"w") as stderr:
+                with open(os.path.join(path,"stdout.log"),"w") as stdout:
+                    with open(os.path.join(path,"stderr.log"),"w") as stderr:
                         result = subprocess.Popen(["sh", "../build_deploy.sh"], cwd=worktree_name, env={"TARGET": "/pr/"+str(payload['number'])},shell=False,stdin=None,stdout=stdout,stderr=stderr)
             elif payload['action'] == "closed":
                 result = subprocess.run(["rm", "-rf", "/var/www/localhost/htdocs/pr/"+str(payload['number'])])
