@@ -6,6 +6,7 @@ import json
 import subprocess
 import urllib.request
 import random, string
+import sys
 
 import hashlib
 import hmac
@@ -33,7 +34,7 @@ class BuildServer(http.server.BaseHTTPRequestHandler):
 
     def do_POST(self):
         if self.headers["Content-Type"] != "application/json":
-           print("Error received invalid POST request (only json payloads are allowed)")
+           print("Error received invalid POST request (only json payloads are allowed)",file=sys.stderr)
            self.send_response(200)
            self.end_headers()
            return
@@ -54,7 +55,7 @@ class BuildServer(http.server.BaseHTTPRequestHandler):
                     with open(os.path.join(worktree_name,"stderr.log"),"w") as stderr:
                         result = subprocess.Popen(["sh", "../build_deploy.sh"], cwd=worktree_name, env={"TARGET": f"/{ref}"},shell=False,stdin=None,stdout=stdout,stderr=stderr)
             else:
-                print(f"Registered push to {payload['ref']}, but the branch was not among the tracked branches")
+                print(f"Registered push to {payload['ref']}, but the branch was not among the tracked branches",file=sys.stderr)
         elif self.headers.get('X-GitHub-Event') == 'pull_request':
             if payload["action"] == "opened" or payload["action"] == "synchronize":
                 result = subprocess.run(["git", "fetch", "--all"], cwd=BuildServer.base_path)
@@ -65,10 +66,13 @@ class BuildServer(http.server.BaseHTTPRequestHandler):
                 with open(os.path.join(worktree_name,"stdout.log"),"w") as stdout:
                     with open(os.path.join(worktree_name,"stderr.log"),"w") as stderr:
                         result = subprocess.Popen(["sh", "../build_deploy.sh"], cwd=worktree_name, env={"TARGET": "/pr/"+str(payload['number'])},shell=False,stdin=None,stdout=stdout,stderr=stderr)
+            elif payload['action'] == "closed":
+                result = subprocess.run(["rm", "-rf", "/var/www/localhost/htdocs/pr/"+str(payload['number'])])
+                print(f"Removed PR {payload['number']} from server.",file=sys.stderr)
             else:
-                print(f"Registered push to {payload['ref']}, but the branch was not among the tracked branches")
+                print(f"Registered pull request action {payload['action']}, but this is not a tracked action",file=sys.stderr)
         else:
-            print(f"Received {self.headers.get('X-GitHub-Event')} ignoring request")
+            print(f"Received {self.headers.get('X-GitHub-Event')} ignoring request",file=sys.stderr)
         self.send_response(200)
         self.end_headers()
 
