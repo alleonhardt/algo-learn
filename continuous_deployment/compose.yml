@@ -1,0 +1,10 @@
+services:
+  seal-website:
+    build: .
+    hostname: "seal-website-cd"
+    ports:
+        - "1409:80"
+        - "8000:8000"
+    volumes:
+      - ./htdocs:/var/www/localhost/htdocs/
+
