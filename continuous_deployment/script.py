@@ -64,7 +64,7 @@ class BuildServer(http.server.BaseHTTPRequestHandler):
                 print(f"Registered push to {payload['ref']}, but the branch was not among the tracked branches",file=sys.stderr)
         elif self.headers.get('X-GitHub-Event') == 'pull_request':
             if payload["action"] == "opened" or payload["action"] == "synchronize":
-                if payload["action"] == "openend":
+                if payload["action"] == "opened":
                     path = f"/var/www/localhost/htdocs/logs/pr/{payload['number']}/{payload['pull_request']['head']['sha']}"
                 else:
                     path = f"/var/www/localhost/htdocs/logs/pr/{payload['number']}/{payload['after']}"
